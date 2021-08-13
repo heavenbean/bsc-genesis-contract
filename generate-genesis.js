@@ -11,7 +11,7 @@ const init_holders = require("./init_holders")
 program.option("--bscChainId <bscChainId>",
     "bscChainId",
     "0060");
-program.option("-c, --chainid <chainid>", "chain id", "714")
+program.option("-c, --chainid <chainid>", "chain id", "1997")
 
 program.option(
     "--initValidatorSetBytes <initValidatorSetBytes>",
@@ -26,10 +26,10 @@ program.option("--initConsensusStateBytes <initConsensusStateBytes>",
 require("./generate-system");
 require("./generate-systemReward");
 require("./generate-validatorset");
-require("./generate-tokenhub");
-require("./generate-tendermintlightclient");
-require("./generate-relayerincentivizecontract");
-require("./generate-crosschain");
+// require("./generate-tokenhub");
+// require("./generate-tendermintlightclient");
+// require("./generate-relayerincentivizecontract");
+// require("./generate-crosschain");
 require("./generate-slash");
 
 program.version("0.0.1")
@@ -97,50 +97,10 @@ Promise.all([
       "slashContract",
       "contracts/SlashIndicator.sol",
       "SlashIndicator"
-  ),
-  compileContract(
-      "tendermintLightClient",
-      "contracts/TendermintLightClient.sol",
-      "TendermintLightClient"
-  ),
-  compileContract(
-      "tokenHub",
-      "contracts/TokenHub.sol",
-      "TokenHub"
-  ),
-  compileContract(
-      "relayerHub",
-      "contracts/RelayerHub.sol",
-      "RelayerHub"
-  ),
-  compileContract(
-      "relayerIncentivize",
-      "contracts/RelayerIncentivize.sol",
-      "RelayerIncentivize"
-  ),
-  compileContract(
-      "govHub",
-      "contracts/GovHub.sol",
-      "GovHub"
-  ),
-  compileContract(
-      "tokenManager",
-      "contracts/TokenManager.sol",
-      "TokenManager"
-  ),
-  compileContract(
-      "crossChain",
-      "contracts/CrossChain.sol",
-      "CrossChain"
   )
 ]).then(result => {
 
-program.option("--initLockedBNBOnTokenHub <initLockedBNBOnTokenHub>",
-    "initLockedBNBOnTokenHub",
-    "176405560900000000000000000");
-
   const data = {
-    initLockedBNBOnTokenHub: program.initLockedBNBOnTokenHub,
     chainId: program.chainid,
     initHolders: init_holders,
     extraData: web3.utils.bytesToHex(validators.extraValidatorBytes)
