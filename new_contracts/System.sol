@@ -7,7 +7,7 @@ contract System {
 	uint32 public constant CODE_OK = 0;
 	uint32 public constant ERROR_FAIL_DECODE = 100;
 
-	uint16 constant public myChainID = 0x07CD;
+	uint16 constant public myChainID = 0x{{bscChainId}};
 
 	address public constant VALIDATOR_CONTRACT_ADDR = 0x0000000000000000000000000000000000001000;
 	address public constant SLASH_CONTRACT_ADDR = 0x0000000000000000000000000000000000001001;

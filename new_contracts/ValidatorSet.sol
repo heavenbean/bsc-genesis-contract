@@ -24,7 +24,7 @@ contract ValidatorSet is IValidatorSet, System {
 
 	uint256 public constant MAX_NUM_OF_VALIDATORS = 41;
 
-	bytes public constant INIT_VALIDATORSET_BYTES = hex"f84580f842f840949fb29aac15b9a4b7f17c3385939b007540f4d791949fb29aac15b9a4b7f17c3385939b007540f4d791949fb29aac15b9a4b7f17c3385939b007540f4d79164";
+	bytes public constant INIT_VALIDATORSET_BYTES = hex"{{initValidatorSetBytes}}";
 
 	uint32 public constant ERROR_UNKNOWN_PACKAGE_TYPE = 101;
 	uint32 public constant ERROR_FAIL_CHECK_VALIDATORS = 102;

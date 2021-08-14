@@ -20,8 +20,8 @@ contract SlashIndicator is ISlashIndicator,System{
 	address[] public validators;
 	mapping(address => Indicator) public indicators;
 	uint256 public previousHeight;
-	uint256 public  misdemeanorThreshold;
-	uint256 public  felonyThreshold;
+	uint256 public	misdemeanorThreshold;
+	uint256 public	felonyThreshold;
 
 	event validatorSlashed(address indexed validator);
 	event indicatorCleaned();

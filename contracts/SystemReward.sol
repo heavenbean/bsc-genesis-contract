@@ -14,7 +14,7 @@ contract SystemReward is System {
     }
   }
 
-  
+
   function claimRewards(address payable to, uint256 amount) external onlyGov returns(uint256) {
     uint256 actualAmount = amount < address(this).balance ? amount : address(this).balance;
     if (actualAmount > MAX_REWARDS) {

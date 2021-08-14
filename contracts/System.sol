@@ -7,12 +7,13 @@ contract System {
   uint32 public constant CODE_OK = 0;
   uint32 public constant ERROR_FAIL_DECODE = 100;
 
-  uint16 constant public bscChainID = 0x07CD;
+  uint16 constant public myChainID = 0x07CD;
 
   address public constant VALIDATOR_CONTRACT_ADDR = 0x0000000000000000000000000000000000001000;
   address public constant SLASH_CONTRACT_ADDR = 0x0000000000000000000000000000000000001001;
   address public constant SYSTEM_REWARD_ADDR = 0x0000000000000000000000000000000000001002;
-  address public constant GOV_HUB_ADDR = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+  address public constant GOV_HUB_ADDR = 0xE65FDc72F2CD178F04Db194f3AB89dA6FafE132A;
+
 
   modifier onlyCoinbase() {
     require(msg.sender == block.coinbase, "the message sender must be the block producer");

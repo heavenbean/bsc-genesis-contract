@@ -7,13 +7,13 @@ program.version("0.0.1");
 program.option(
     "-t, --template <template>",
     "validatorSet template file",
-    "./contracts/BSCValidatorSet.template"
+    "./contracts/ValidatorSet.template"
 );
 
 program.option(
     "-o, --output <output-file>",
     "BSCValidatorSet.sol",
-    "./contracts/BSCValidatorSet.sol"
+    "./contracts/ValidatorSet.sol"
 )
 
 program.option(
@@ -41,4 +41,4 @@ const data = {
 const templateString = fs.readFileSync(program.template).toString();
 const resultString = nunjucks.renderString(templateString, data);
 fs.writeFileSync(program.output, resultString);
-console.log("BSCValidatorSet file updated.");
+console.log("ValidatorSet file updated.");

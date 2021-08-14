@@ -10,7 +10,7 @@ const init_holders = require("./init_holders")
 
 program.option("--bscChainId <bscChainId>",
     "bscChainId",
-    "0060");
+    "07CD");
 program.option("-c, --chainid <chainid>", "chain id", "1997")
 
 program.option(
@@ -85,8 +85,8 @@ function compileContract(key, contractFile, contractName) {
 Promise.all([
   compileContract(
     "validatorContract",
-    "contracts/BSCValidatorSet.sol",
-    "BSCValidatorSet"
+    "contracts/ValidatorSet.sol",
+    "ValidatorSet"
   ),
   compileContract(
     "systemRewardContract",

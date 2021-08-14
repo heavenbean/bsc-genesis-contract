@@ -4,7 +4,7 @@ import "./lib/BytesToTypes.sol";
 import "./lib/Memory.sol";
 import "./interface/ISlashIndicator.sol";
 import "./interface/IApplication.sol";
-import "./interface/IBSCValidatorSet.sol";
+import "./interface/IValidatorSet.sol";
 import "./lib/CmnPkg.sol";
 import "./lib/RLPEncode.sol";
 
@@ -44,40 +44,18 @@ contract SlashIndicator is ISlashIndicator,System{
   }
 
   modifier onlyZeroGasPrice() {
-    
     require(tx.gasprice == 0 , "gasprice is not zero");
-    
     _;
   }
-  
+
   function init() external onlyNotInit{
     misdemeanorThreshold = MISDEMEANOR_THRESHOLD;
     felonyThreshold = FELONY_THRESHOLD;
     alreadyInit = true;
   }
 
-  /*********************** Implement cross chain app ********************************/
-  function handleSynPackage(uint8, bytes calldata) external onlyGov onlyInit view returns(bytes memory) {
-    require(false, "receive unexpected syn package");
-  }
-
-  function handleAckPackage(uint8, bytes calldata msgBytes) external onlyGov onlyInit {
-    (CmnPkg.CommonAckPackage memory response, bool ok) = CmnPkg.decodeCommonAckPackage(msgBytes);
-    if (ok) {
-      emit knownResponse(response.code);
-    } else {
-      emit unKnownResponse(response.code);
-    }
-    return;
-  }
-
-  function handleFailAckPackage(uint8, bytes calldata) external onlyGov onlyInit {
-    emit crashResponse();
-    return;
-  }
-
   /*********************** External func ********************************/
-  function slash(address validator) external onlyCoinbase onlyInit oncePerBlock onlyZeroGasPrice{
+  function slash(address validator) external onlyCoinbase onlyInit oncePerBlock onlyZeroGasPrice {
     Indicator memory indicator = indicators[validator];
     if (indicator.exist) {
       indicator.count++;
@@ -89,9 +67,9 @@ contract SlashIndicator is ISlashIndicator,System{
     indicator.height = block.number;
     if (indicator.count % felonyThreshold == 0) {
       indicator.count = 0;
-      IBSCValidatorSet(VALIDATOR_CONTRACT_ADDR).felony(validator);
+      IValidatorSet(VALIDATOR_CONTRACT_ADDR).felony(validator);
     } else if (indicator.count % misdemeanorThreshold == 0) {
-      IBSCValidatorSet(VALIDATOR_CONTRACT_ADDR).misdemeanor(validator);
+      IValidatorSet(VALIDATOR_CONTRACT_ADDR).misdemeanor(validator);
     }
     indicators[validator] = indicator;
     emit validatorSlashed(validator);
@@ -100,7 +78,7 @@ contract SlashIndicator is ISlashIndicator,System{
 
   // To prevent validator misbehaving and leaving, do not clean slash record to zero, but decrease by felonyThreshold/DECREASE_RATE .
   // Clean is an effective implement to reorganize "validators" and "indicators".
-  function clean() external override(ISlashIndicator) onlyValidatorContract onlyInit{
+  function clean() external override(ISlashIndicator) onlyValidatorContract onlyInit {
     if(validators.length == 0){
       return;
     }
@@ -154,7 +132,7 @@ contract SlashIndicator is ISlashIndicator,System{
 
 
   /*********************** Param update ********************************/
-  function updateParam(string calldata key, bytes calldata value) external onlyInit onlyGov{
+  function updateParam(string calldata key, bytes calldata value) external onlyInit onlyGov {
     if (Memory.compareStrings(key,"misdemeanorThreshold")) {
       require(value.length == 32, "length of misdemeanorThreshold mismatch");
       uint256 newMisdemeanorThreshold = BytesToTypes.bytesToUint256(32, value);
@@ -181,7 +159,7 @@ contract SlashIndicator is ISlashIndicator,System{
     bytes[] memory elements = new bytes[](4);
     elements[0] = valAddr.encodeAddress();
     elements[1] = uint256(block.number).encodeUint();
-    elements[2] = uint256(bscChainID).encodeUint();
+    elements[2] = uint256(myChainID).encodeUint();
     elements[3] = uint256(block.timestamp).encodeUint();
     return elements.encodeList();
   }

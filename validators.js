@@ -7,8 +7,14 @@ const validators = [
     consensusAddr: "0xE65FDc72F2CD178F04Db194f3AB89dA6FafE132A",
     feeAddr: "0xE65FDc72F2CD178F04Db194f3AB89dA6FafE132A",
     bscFeeAddr: "0xE65FDc72F2CD178F04Db194f3AB89dA6FafE132A",
-    votingPower: 0x0000000000000064
-  }
+    votingPower: 0x0000000000002710
+  },
+  {
+    consensusAddr: "0xE52497FCA47cA80F6eAa161A80c0FAd247DDb457",
+    feeAddr: "0xE52497FCA47cA80F6eAa161A80c0FAd247DDb457",
+    bscFeeAddr: "0xE52497FCA47cA80F6eAa161A80c0FAd247DDb457",
+    votingPower: 0x0000000000002710
+  },
 ];
 
 // ===============  Do not edit below ====

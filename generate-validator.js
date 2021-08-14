@@ -31,5 +31,5 @@ processValidatorConf().then(function (validators) {
   const templateString = fs.readFileSync(__dirname + '/validators.template').toString();
   const resultString = nunjucks.renderString(templateString, data);
   fs.writeFileSync(__dirname + '/validators.js', resultString);
-  console.log("BSCValidatorSet file updated.");
+  console.log("ValidatorSet file updated.");
 })
