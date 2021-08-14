@@ -5,12 +5,10 @@ import "./lib/Memory.sol";
 import "./interface/ISlashIndicator.sol";
 import "./interface/IApplication.sol";
 import "./interface/IBSCValidatorSet.sol";
-import "./interface/IParamSubscriber.sol";
-import "./interface/ICrossChain.sol";
 import "./lib/CmnPkg.sol";
 import "./lib/RLPEncode.sol";
 
-contract SlashIndicator is ISlashIndicator,System,IParamSubscriber, IApplication{
+contract SlashIndicator is ISlashIndicator,System{
   using RLPEncode for *;
 
   uint256 public constant MISDEMEANOR_THRESHOLD = 50;
@@ -59,11 +57,11 @@ contract SlashIndicator is ISlashIndicator,System,IParamSubscriber, IApplication
   }
 
   /*********************** Implement cross chain app ********************************/
-  function handleSynPackage(uint8, bytes calldata) external onlyCrossChainContract onlyInit override returns(bytes memory) {
+  function handleSynPackage(uint8, bytes calldata) external onlyGov onlyInit view returns(bytes memory) {
     require(false, "receive unexpected syn package");
   }
 
-  function handleAckPackage(uint8, bytes calldata msgBytes) external onlyCrossChainContract onlyInit override {
+  function handleAckPackage(uint8, bytes calldata msgBytes) external onlyGov onlyInit {
     (CmnPkg.CommonAckPackage memory response, bool ok) = CmnPkg.decodeCommonAckPackage(msgBytes);
     if (ok) {
       emit knownResponse(response.code);
@@ -73,7 +71,7 @@ contract SlashIndicator is ISlashIndicator,System,IParamSubscriber, IApplication
     return;
   }
 
-  function handleFailAckPackage(uint8, bytes calldata) external onlyCrossChainContract onlyInit override {
+  function handleFailAckPackage(uint8, bytes calldata) external onlyGov onlyInit {
     emit crashResponse();
     return;
   }
@@ -92,7 +90,6 @@ contract SlashIndicator is ISlashIndicator,System,IParamSubscriber, IApplication
     if (indicator.count % felonyThreshold == 0) {
       indicator.count = 0;
       IBSCValidatorSet(VALIDATOR_CONTRACT_ADDR).felony(validator);
-      ICrossChain(CROSS_CHAIN_CONTRACT_ADDR).sendSynPackage(SLASH_CHANNELID, encodeSlashPackage(validator), 0);
     } else if (indicator.count % misdemeanorThreshold == 0) {
       IBSCValidatorSet(VALIDATOR_CONTRACT_ADDR).misdemeanor(validator);
     }
@@ -157,7 +154,7 @@ contract SlashIndicator is ISlashIndicator,System,IParamSubscriber, IApplication
 
 
   /*********************** Param update ********************************/
-  function updateParam(string calldata key, bytes calldata value) external override onlyInit onlyGov{
+  function updateParam(string calldata key, bytes calldata value) external onlyInit onlyGov{
     if (Memory.compareStrings(key,"misdemeanorThreshold")) {
       require(value.length == 32, "length of misdemeanorThreshold mismatch");
       uint256 newMisdemeanorThreshold = BytesToTypes.bytesToUint256(32, value);
