@@ -3,19 +3,14 @@ pragma solidity 0.6.4;
 import "./System.sol";
 import "./lib/BytesToTypes.sol";
 import "./lib/Memory.sol";
-import "./interface/ILightClient.sol";
 import "./interface/ISlashIndicator.sol";
-import "./interface/ITokenHub.sol";
-import "./interface/IRelayerHub.sol";
-import "./interface/IParamSubscriber.sol";
 import "./interface/IBSCValidatorSet.sol";
-import "./interface/IApplication.sol";
 import "./lib/SafeMath.sol";
 import "./lib/RLPDecode.sol";
 import "./lib/CmnPkg.sol";
 
 
-contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplication {
+contract BSCValidatorSet is IBSCValidatorSet, System {
 
   using SafeMath for uint256;
 
@@ -42,7 +37,6 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
 
   /*********************** state of the contract **************************/
   Validator[] public currentValidatorSet;
-  uint256 public expireTimeSecondGap;
   uint256 public totalInComing;
 
   // key is the `consensusAddress` of `Validator`,
@@ -77,9 +71,6 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
   event validatorSetUpdated();
   event validatorJailed(address indexed validator);
   event validatorEmptyJailed(address indexed validator);
-  event batchTransfer(uint256 amount);
-  event batchTransferFailed(uint256 indexed amount, string reason);
-  event batchTransferLowerFailed(uint256 indexed amount, bytes reason);
   event systemTransfer(uint256 amount);
   event directTransfer(address payable indexed validator, uint256 amount);
   event directTransferFail(address payable indexed validator, uint256 amount);
@@ -89,7 +80,6 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
   event validatorFelony(address indexed validator, uint256 amount);
   event failReasonWithStr(string message);
   event unexpectedPackage(uint8 channelId, bytes msgBytes);
-  event paramChange(string key, bytes value);
 
   /*********************** init **************************/
   function init() external onlyNotInit{
@@ -99,12 +89,11 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
       currentValidatorSet.push(validatorSetPkg.validatorSet[i]);
       currentValidatorSetMap[validatorSetPkg.validatorSet[i].consensusAddress] = i+1;
     }
-    expireTimeSecondGap = EXPIRE_TIME_SECOND_GAP;
     alreadyInit = true;
   }
 
   /*********************** Cross Chain App Implement **************************/
-  function handleSynPackage(uint8, bytes calldata msgBytes) onlyInit onlyCrossChainContract external override returns(bytes memory responsePayload) {
+  function handleSynPackage(uint8, bytes calldata msgBytes) onlyInit onlyGov external returns(bytes memory responsePayload) {
     (IbcValidatorSetPackage memory validatorSetPackage, bool ok) = decodeValidatorSetSynPackage(msgBytes);
     if (!ok) {
       return CmnPkg.encodeCommonAckPackage(ERROR_FAIL_DECODE);
@@ -129,12 +118,12 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
     }
   }
 
-  function handleAckPackage(uint8 channelId, bytes calldata msgBytes) external onlyCrossChainContract override {
+  function handleAckPackage(uint8 channelId, bytes calldata msgBytes) external onlyGov {
     // should not happen
     emit unexpectedPackage(channelId, msgBytes);
   }
 
-  function handleFailAckPackage(uint8 channelId, bytes calldata msgBytes) external onlyCrossChainContract override {
+  function handleFailAckPackage(uint8 channelId, bytes calldata msgBytes) external onlyGov {
     // should not happen
     emit unexpectedPackage(channelId, msgBytes);
   }
@@ -185,89 +174,15 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
       return ERROR_FAIL_CHECK_VALIDATORS;
     }
 
-    //step 1: do calculate distribution, do not make it as an internal function for saving gas.
-    uint crossSize;
-    uint directSize;
-    for (uint i = 0;i<currentValidatorSet.length;i++) {
-      if (currentValidatorSet[i].incoming >= DUSTY_INCOMING) {
-        crossSize ++;
-      } else if (currentValidatorSet[i].incoming > 0) {
-        directSize ++;
-      }
-    }
-
-    //cross transfer
-    address[] memory crossAddrs = new address[](crossSize);
-    uint256[] memory crossAmounts = new uint256[](crossSize);
-    uint256[] memory crossIndexes = new uint256[](crossSize);
-    address[] memory crossRefundAddrs = new address[](crossSize);
-    uint256 crossTotal;
-    // direct transfer
-    address payable[] memory directAddrs = new address payable[](directSize);
-    uint256[] memory directAmounts = new uint256[](directSize);
-    crossSize = 0;
-    directSize = 0;
     Validator[] memory validatorSetTemp = validatorSet; // fix error: stack too deep, try removing local variables
-    uint256 relayFee = ITokenHub(TOKEN_HUB_ADDR).getMiniRelayFee();
-    if (relayFee > DUSTY_INCOMING) {
-      emit failReasonWithStr("fee is larger than DUSTY_INCOMING");
-      return ERROR_RELAYFEE_TOO_LARGE;
-    }
+
+    // TRANSFER REWARD
     for (uint i = 0;i<currentValidatorSet.length;i++) {
-      if (currentValidatorSet[i].incoming >= DUSTY_INCOMING) {
-        crossAddrs[crossSize] = currentValidatorSet[i].BBCFeeAddress;
-        uint256 value = currentValidatorSet[i].incoming - currentValidatorSet[i].incoming % PRECISION;
-        crossAmounts[crossSize] = value.sub(relayFee);
-        crossRefundAddrs[crossSize] = currentValidatorSet[i].BBCFeeAddress;
-        crossIndexes[crossSize] = i;
-        crossTotal = crossTotal.add(value);
-        crossSize ++;
-      } else if (currentValidatorSet[i].incoming > 0) {
-        directAddrs[directSize] = currentValidatorSet[i].feeAddress;
-        directAmounts[directSize] = currentValidatorSet[i].incoming;
-        directSize ++;
-      }
-    }
-
-    //step 2: do cross chain transfer
-    bool failCross = false;
-    if (crossTotal > 0) {
-      try ITokenHub(TOKEN_HUB_ADDR).batchTransferOutBNB{value:crossTotal}(crossAddrs, crossAmounts, crossRefundAddrs, uint64(block.timestamp + expireTimeSecondGap)) returns (bool success) {
-        if (success) {
-           emit batchTransfer(crossTotal);
-        } else {
-           emit batchTransferFailed(crossTotal, "batch transfer return false");
-        }
-      }catch Error(string memory reason) {
-        failCross = true;
-        emit batchTransferFailed(crossTotal, reason);
-      }catch (bytes memory lowLevelData) {
-        failCross = true;
-        emit batchTransferLowerFailed(crossTotal, lowLevelData);
-      }
-    }
-
-    if (failCross) {
-      for (uint i = 0; i< crossIndexes.length;i++) {
-        uint idx = crossIndexes[i];
-        bool success = currentValidatorSet[idx].feeAddress.send(currentValidatorSet[idx].incoming);
-        if (success) {
-          emit directTransfer(currentValidatorSet[idx].feeAddress, currentValidatorSet[idx].incoming);
-        } else {
-          emit directTransferFail(currentValidatorSet[idx].feeAddress, currentValidatorSet[idx].incoming);
-        }
-      }
-    }
-
-    // step 3: direct transfer
-    if (directAddrs.length>0) {
-      for (uint i = 0;i<directAddrs.length;i++) {
-        bool success = directAddrs[i].send(directAmounts[i]);
-        if (success) {
-          emit directTransfer(directAddrs[i], directAmounts[i]);
-        } else {
-          emit directTransferFail(directAddrs[i], directAmounts[i]);
-        }
+      bool success = currentValidatorSet[i].feeAddress.send(currentValidatorSet[i].incoming);
+      if (success) {
+        emit directTransfer(currentValidatorSet[i].feeAddress, currentValidatorSet[i].incoming);
+      } else {
+        emit directTransferFail(currentValidatorSet[i].feeAddress, currentValidatorSet[i].incoming);
       }
     }
 
@@ -375,19 +290,6 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
       }
     }
     // averageDistribute*rest may less than income, but it is ok, the dust income will go to system reward eventually.
-  }
-
-  /*********************** Param update ********************************/
-  function updateParam(string calldata key, bytes calldata value) override external onlyInit onlyGov{
-    if (Memory.compareStrings(key, "expireTimeSecondGap")) {
-      require(value.length == 32, "length of expireTimeSecondGap mismatch");
-      uint256 newExpireTimeSecondGap = BytesToTypes.bytesToUint256(32, value);
-      require(newExpireTimeSecondGap >=100 && newExpireTimeSecondGap <= 1e5, "the expireTimeSecondGap is out of range");
-      expireTimeSecondGap = newExpireTimeSecondGap;
-    } else {
-      require(false, "unknown param");
-    }
-    emit paramChange(key, value);
   }
 
   /*********************** Internal Functions **************************/
